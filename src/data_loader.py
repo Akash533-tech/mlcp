@@ -15,7 +15,21 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ml-latest-s
 
 # ─────────────────────────────────────────────────────────────────────────────
 def load_raw_data() -> dict:
-    """Return a dict of raw DataFrames: ratings, movies, tags, links."""
+    """Return a dict of raw DataFrames: ratings, movies, tags, links.
+       Downloads the dataset automatically if missing."""
+    import urllib.request
+    import zipfile
+    
+    if not os.path.exists(os.path.join(DATA_DIR, "ratings.csv")):
+        print("Dataset not found locally. Downloading ml-latest-small from GroupLens...")
+        os.makedirs(os.path.dirname(DATA_DIR), exist_ok=True)
+        url = "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"
+        zip_path = os.path.join(os.path.dirname(DATA_DIR), "ml-latest-small.zip")
+        urllib.request.urlretrieve(url, zip_path)
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(os.path.dirname(DATA_DIR))
+        os.remove(zip_path)
+        
     ratings = pd.read_csv(os.path.join(DATA_DIR, "ratings.csv"))
     movies  = pd.read_csv(os.path.join(DATA_DIR, "movies.csv"))
     tags    = pd.read_csv(os.path.join(DATA_DIR, "tags.csv"))
