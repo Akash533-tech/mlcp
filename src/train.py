@@ -51,9 +51,11 @@ class Trainer:
                  device:      str  = "cpu",
                  lr:          float = 1e-3,
                  batch_size:  int   = 1024,
-                 l2_lambda:   float = 1e-4):
+                 l2_lambda:   float = 1e-4,
+                 edge_weight: torch.Tensor = None):
         self.model       = model.to(device)
         self.edge_index  = edge_index.to(device)
+        self.edge_weight = edge_weight.to(device) if edge_weight is not None else None
         self.train_df    = train_df
         self.val_df      = val_df
         self.device      = device
@@ -90,7 +92,7 @@ class Trainer:
             u, pos, neg, rating = [b.to(self.device) for b in batch]
             self.optimizer.zero_grad()
 
-            user_embs, movie_embs = self.model(self.edge_index)
+            user_embs, movie_embs = self.model(self.edge_index, self.edge_weight)
 
             u_e   = user_embs[u]
             pos_e = movie_embs[pos]
@@ -107,7 +109,7 @@ class Trainer:
     @torch.no_grad()
     def evaluate(self, K: int = 10) -> dict:
         self.model.eval()
-        user_embs, movie_embs = self.model(self.edge_index)
+        user_embs, movie_embs = self.model(self.edge_index, self.edge_weight)
 
         precisions, recalls, ndcgs, mses = [], [], [], []
 

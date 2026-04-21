@@ -35,63 +35,78 @@ class LightGCN(nn.Module):
     def __init__(self,
                  n_users:  int,
                  n_movies: int,
+                 n_genres: int  = 0,
+                 n_tags:   int  = 0,
                  emb_dim:  int  = 64,
                  n_layers: int  = 3,
                  dropout:  float = 0.1):
         super().__init__()
         self.n_users  = n_users
         self.n_movies = n_movies
+        self.n_genres = n_genres
+        self.n_tags   = n_tags
         self.emb_dim  = emb_dim
         self.n_layers = n_layers
         self.dropout  = dropout
 
         self.user_emb  = nn.Embedding(n_users,  emb_dim)
         self.movie_emb = nn.Embedding(n_movies, emb_dim)
+        self.genre_emb = nn.Embedding(n_genres, emb_dim) if n_genres > 0 else None
+        self.tag_emb   = nn.Embedding(n_tags,   emb_dim) if n_tags > 0 else None
 
         self.convs = nn.ModuleList([LGConv() for _ in range(n_layers)])
 
         nn.init.normal_(self.user_emb.weight,  std=0.1)
         nn.init.normal_(self.movie_emb.weight, std=0.1)
+        if self.genre_emb is not None: nn.init.normal_(self.genre_emb.weight, std=0.1)
+        if self.tag_emb is not None: nn.init.normal_(self.tag_emb.weight, std=0.1)
 
     # ── forward ───────────────────────────────────────────────────────────────
-    def forward(self, edge_index: torch.Tensor):
+    def forward(self, edge_index: torch.Tensor, edge_weight: torch.Tensor = None):
         """
         Parameters
         ----------
         edge_index : LongTensor [2, E]
-            Bipartite graph edges in the combined user+movie space.
-            User nodes are indexed [0, n_users-1],
-            Movie nodes are indexed [n_users, n_users+n_movies-1].
-
-        Returns
-        -------
-        user_embs, movie_embs : FloatTensor [n_users, D], [n_movies, D]
+            A fully homogeneous graph containing User, Movie, (and optionally Genre, Tag) nodes.
+            User nodes are [0, n_users)
+            Movie nodes are [n_users, n_users + n_movies)
+            Genre nodes are [n_users + n_movies, n_users + n_movies + n_genres)
+            Tag nodes are [n_users + n_movies + n_genres, ...)
+        edge_weight : FloatTensor [E], optional
+            Weights indicating strength (e.g. TF-IDF * NLP Sentiment)
         """
-        x = torch.cat([self.user_emb.weight, self.movie_emb.weight], dim=0)
+        embs = [self.user_emb.weight, self.movie_emb.weight]
+        if self.genre_emb is not None: embs.append(self.genre_emb.weight)
+        if self.tag_emb is not None: embs.append(self.tag_emb.weight)
+        x = torch.cat(embs, dim=0)
 
         # Edge dropout during training
         if self.training and self.dropout > 0:
             mask = torch.rand(edge_index.size(1), device=edge_index.device)
-            edge_index = edge_index[:, mask > self.dropout]
+            keep_mask = mask > self.dropout
+            edge_index = edge_index[:, keep_mask]
+            if edge_weight is not None:
+                edge_weight = edge_weight[keep_mask]
 
         # Propagate
         all_embs = [x]
         for conv in self.convs:
-            x = conv(x, edge_index)
+            x = conv(x, edge_index, edge_weight)
             all_embs.append(x)
 
         # Final = mean across layers
         final = torch.stack(all_embs, dim=1).mean(dim=1)
         user_embs  = final[:self.n_users]
-        movie_embs = final[self.n_users:]
+        movie_embs = final[self.n_users : self.n_users + self.n_movies]
         return user_embs, movie_embs
 
     # ── scoring ───────────────────────────────────────────────────────────────
     def score_users_movies(self,
                            edge_index: torch.Tensor,
                            user_ids:   torch.Tensor,
-                           movie_ids:  torch.Tensor) -> torch.Tensor:
-        user_embs, movie_embs = self.forward(edge_index)
+                           movie_ids:  torch.Tensor,
+                           edge_weight: torch.Tensor = None) -> torch.Tensor:
+        user_embs, movie_embs = self.forward(edge_index, edge_weight)
         u = user_embs[user_ids]
         m = movie_embs[movie_ids]
         return (u * m).sum(dim=-1)
@@ -100,11 +115,12 @@ class LightGCN(nn.Module):
                   edge_index: torch.Tensor,
                   user_id:    int,
                   top_k:      int = 10,
-                  exclude:    set = None) -> torch.Tensor:
+                  exclude:    set = None,
+                  edge_weight: torch.Tensor = None) -> torch.Tensor:
         """Return indices of top-K recommended movies for a user."""
         self.eval()
         with torch.no_grad():
-            user_embs, movie_embs = self.forward(edge_index)
+            user_embs, movie_embs = self.forward(edge_index, edge_weight)
             scores = movie_embs @ user_embs[user_id]  # [n_movies]
             if exclude:
                 scores[list(exclude)] = float("-inf")

@@ -47,6 +47,8 @@ def build_networkx_graph(data: dict) -> nx.Graph:
     movies    = data["movies"]
     genre_list = data["genre_list"]
     movie2idx  = data["movie2idx"]
+    tag_weights = data.get("tag_weights")
+    tag_list    = data.get("tag_list", [])
 
     # Build a *valid movie set* (movies that appear in ratings)
     rated_movie_ids = set(ratings["movieId"].unique())
@@ -87,6 +89,18 @@ def build_networkx_graph(data: dict) -> nx.Graph:
             if G.has_node(f"g_{g}"):
                 G.add_edge(f"m_{mid_idx}", f"g_{g}",
                            edge_type="belongs_to", weight=1.0)
+
+    # ── Tag nodes & Movie-Tag edges ───────────────────────────────────────────
+    for t in tag_list:
+        G.add_node(f"t_{t}", node_type="tag", tag=t)
+        
+    if tag_weights is not None and not tag_weights.empty:
+        for _, row in tag_weights.iterrows():
+            mid = row["movieId"]
+            if mid in movie2idx:
+                mid_idx = movie2idx[mid]
+                G.add_edge(f"m_{mid_idx}", f"t_{row['tag']}",
+                           edge_type="tagged_as", weight=row["weight"])
 
     # ── Co-watched Movie–Movie edges ──────────────────────────────────────────
     print("  Computing co-watched edges …")
@@ -151,6 +165,11 @@ def build_pyg_data(data: dict) -> HeteroData:
     n_movies  = data["n_movies"]
     n_genres  = len(genre_list)
     genre2idx = {g: i for i, g in enumerate(genre_list)}
+    
+    tag_weights = data.get("tag_weights")
+    tag_list    = data.get("tag_list", [])
+    n_tags      = len(tag_list)
+    tag2idx     = {t: i for i, t in enumerate(tag_list)}
 
     pyg = HeteroData()
 
@@ -178,6 +197,11 @@ def build_pyg_data(data: dict) -> HeteroData:
     # Genres: one-hot identity
     pyg["genre"].x    = torch.eye(n_genres)
     pyg["genre"].num_nodes = n_genres
+
+    # Tags: one-hot identity
+    if n_tags > 0:
+        pyg["tag"].x = torch.eye(n_tags)
+        pyg["tag"].num_nodes = n_tags
 
     # ── Edges: User → Movie (rated) ───────────────────────────────────────────
     decay_w = time_decay(ratings["timestamp"].values)
@@ -207,7 +231,34 @@ def build_pyg_data(data: dict) -> HeteroData:
     if mg_src:
         pyg["movie", "belongs_to", "genre"].edge_index = torch.tensor(
             [mg_src, mg_dst], dtype=torch.long)
+        pyg["movie", "belongs_to", "genre"].edge_attr = torch.ones(
+            (len(mg_src), 1), dtype=torch.float)
+            
         pyg["genre", "contains", "movie"].edge_index = torch.tensor(
             [mg_dst, mg_src], dtype=torch.long)
+        pyg["genre", "contains", "movie"].edge_attr = torch.ones(
+            (len(mg_src), 1), dtype=torch.float)
+
+    # ── Edges: Movie → Tag ────────────────────────────────────────────────────
+    mt_src, mt_dst, mt_w = [], [], []
+    if tag_weights is not None and not tag_weights.empty:
+        for _, row in tag_weights.iterrows():
+            mid = row["movieId"]
+            tag = row["tag"]
+            if mid in movie2idx and tag in tag2idx:
+                mt_src.append(movie2idx[mid])
+                mt_dst.append(tag2idx[tag])
+                mt_w.append(row["weight"])
+
+    if mt_src:
+        pyg["movie", "tagged_as", "tag"].edge_index = torch.tensor(
+            [mt_src, mt_dst], dtype=torch.long)
+        pyg["movie", "tagged_as", "tag"].edge_attr = torch.tensor(
+            mt_w, dtype=torch.float).unsqueeze(1)
+            
+        pyg["tag", "tags", "movie"].edge_index = torch.tensor(
+            [mt_dst, mt_src], dtype=torch.long)
+        pyg["tag", "tags", "movie"].edge_attr = torch.tensor(
+            mt_w, dtype=torch.float).unsqueeze(1)
 
     return pyg

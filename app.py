@@ -58,10 +58,24 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     padding: 14px 16px;
     margin-bottom: 10px;
     transition: transform .2s, box-shadow .2s;
+    display: flex;
+    align-items: center;
 }
 .rec-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 24px rgba(108,99,255,.35);
+}
+.rec-poster {
+    width: 60px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-right: 14px;
+    border: 1px solid #3a3a7a;
+    background-color: #12122a;
+}
+.rec-content {
+    flex: 1;
 }
 .rec-rank {
     font-size: 1.4rem;
@@ -113,6 +127,151 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
 /* ── Scrollable columns ── */
 .scroll-box { max-height: 640px; overflow-y: auto; padding-right: 4px; }
+
+/* ════════════════════════════════════════
+   CineBot Chat UI
+   ════════════════════════════════════════ */
+.chat-outer {
+    background: linear-gradient(180deg, #0d0d22 0%, #10102a 100%);
+    border: 1px solid #2a2a5a;
+    border-radius: 16px;
+    padding: 20px 16px 8px;
+    max-height: 580px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    margin-bottom: 12px;
+}
+.chat-row-user {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 14px;
+    animation: fadeInRight .3s ease;
+}
+.chat-row-bot {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 14px;
+    animation: fadeInLeft .3s ease;
+}
+@keyframes fadeInRight {
+    from { opacity:0; transform: translateX(20px); }
+    to   { opacity:1; transform: translateX(0); }
+}
+@keyframes fadeInLeft {
+    from { opacity:0; transform: translateX(-20px); }
+    to   { opacity:1; transform: translateX(0); }
+}
+.bubble-user {
+    max-width: 72%;
+    background: linear-gradient(135deg, #6C63FF, #9a56ff);
+    color: #fff;
+    border-radius: 18px 18px 4px 18px;
+    padding: 10px 16px;
+    font-size: .92rem;
+    line-height: 1.5;
+    box-shadow: 0 4px 16px rgba(108,99,255,.4);
+}
+.bubble-bot {
+    max-width: 78%;
+    background: linear-gradient(135deg, #1a1a3a, #1e1e50);
+    border: 1px solid #3a3a7a;
+    color: #e0e0ff;
+    border-radius: 18px 18px 18px 4px;
+    padding: 10px 16px;
+    font-size: .92rem;
+    line-height: 1.6;
+    box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+.avatar-bot {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#6C63FF,#FF6584);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    margin-right: 10px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.avatar-user {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#9a56ff,#6C63FF);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    margin-left: 10px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+/* Typing dots */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 0;
+}
+.typing-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #6C63FF;
+    animation: bounce 1.2s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: .2s; }
+.typing-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes bounce {
+    0%,60%,100% { transform: translateY(0); }
+    30%          { transform: translateY(-8px); }
+}
+/* Mood option buttons */
+.mood-opts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+/* Chat genre pill */
+.chat-genre-pill {
+    display: inline-block;
+    background: #6C63FF22;
+    border: 1px solid #6C63FF;
+    color: #b0a8ff;
+    border-radius: 20px;
+    padding: 1px 8px;
+    font-size: .72rem;
+    margin: 2px 2px 0 0;
+}
+/* Inline rec card inside chat */
+.chat-rec-card {
+    background: linear-gradient(135deg,#12122a,#1a1a40);
+    border: 1px solid #3a3a6a;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.chat-rec-poster {
+    width: 44px; height: 66px;
+    object-fit: cover;
+    border-radius: 5px;
+    border: 1px solid #3a3a6a;
+    background: #12122a;
+    flex-shrink: 0;
+}
+.chat-rec-rank {
+    font-size: 1.1rem;
+    font-weight:700;
+    color: #FFBE0B;
+    min-width: 24px;
+}
+.chat-rec-title { font-size: .88rem; font-weight:600; color:#e0e0ff; }
+.chat-rec-meta  { font-size: .74rem; color: #7070a0; margin-top:2px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -130,17 +289,18 @@ def load_everything():
 
     n_users  = data["n_users"]
     n_movies = data["n_movies"]
+    n_genres = len(data.get("genre_list", []))
+    n_tags   = data.get("n_tags", 0)
 
-    # Build bipartite edge index (users 0..n_users-1, movies n_users..n_users+n_movies-1)
-    ei = pyg["user", "rated", "movie"].edge_index
-    movie_ei = ei[1] + n_users
-    edge_index = torch.stack([
-        torch.cat([ei[0], movie_ei]),
-        torch.cat([movie_ei, ei[0]]),
-    ])
+    # Convert fully semantic HeteroData into a single homogeneous structure
+    homo = pyg.to_homogeneous()
+    edge_index  = homo.edge_index
+    edge_weight = homo.edge_attr.squeeze(-1) if hasattr(homo, "edge_attr") and homo.edge_attr is not None else None
 
+    # Instantiate Heterogeneous LightGCN mapping size
     model = LightGCN(n_users=n_users, n_movies=n_movies,
-                     emb_dim=32, n_layers=2)
+                     n_genres=n_genres, n_tags=n_tags,
+                     emb_dim=64, n_layers=3)
 
     WEIGHTS = os.path.join(os.path.dirname(__file__), "model_weights.pth")
     trained = False
@@ -151,30 +311,70 @@ def load_everything():
 
     return dict(
         data=data, train_df=train_df, val_df=val_df, test_df=test_df,
-        model=model, edge_index=edge_index, trained=trained,
-        pyg=pyg,
+        model=model, edge_index=edge_index, edge_weight=edge_weight,
+        trained=trained, pyg=pyg,
     )
 
 
-def get_movie_info(movie_idx: int, data: dict) -> dict:
+@st.cache_data(show_spinner=False)
+def fetch_tmdb_poster(tmdb_id: float, api_key: str) -> str:
+    if pd.isna(tmdb_id) or not api_key:
+        return ""
+    url = f"https://api.themoviedb.org/3/movie/{int(tmdb_id)}?api_key={api_key}"
+    try:
+        import requests
+        resp = requests.get(url, timeout=2)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get('poster_path'):
+                return f"https://image.tmdb.org/t/p/w200{data['poster_path']}"
+    except Exception:
+        pass
+    return ""
+
+def get_movie_info(movie_idx: int, data: dict, api_key: str = "") -> dict:
     movies     = data["movies"]
+    links      = data["links"]
     movie2idx  = data["movie2idx"]
     idx2movie  = {v: k for k, v in movie2idx.items()}
     mid        = idx2movie.get(movie_idx)
     if mid is None:
-        return {"title": f"Movie #{movie_idx}", "year": "", "genres": []}
+        return {"title": f"Movie #{movie_idx}", "year": "", "genres": [], "poster_url": ""}
     row = movies[movies["movieId"] == mid]
     if row.empty:
-        return {"title": f"Movie #{movie_idx}", "year": "", "genres": []}
+        return {"title": f"Movie #{movie_idx}", "year": "", "genres": [], "poster_url": ""}
     r = row.iloc[0]
-    return {"title": r["title"], "year": r["year"], "genres": r["genres"]}
+    
+    link_row = links[links["movieId"] == mid]
+    tmdb_id = link_row.iloc[0]["tmdbId"] if not link_row.empty else np.nan
+    poster_url = fetch_tmdb_poster(tmdb_id, api_key)
+    
+    return {"title": r["title"], "year": r["year"], "genres": r["genres"], "poster_url": poster_url}
+
+def render_movie_card(info: dict, rank: int = None, score: str = "") -> str:
+    genres_html = "".join(f"<span class='genre-pill'>{g}</span>" for g in info["genres"])
+    rank_html = f"<span class='rec-rank'>#{rank}</span>" if rank is not None else ""
+    score_html = f"<span class='rec-score'>{score}</span>" if score else ""
+    poster_html = f"<img class='rec-poster' src='{info['poster_url']}' loading='lazy' />" if info.get("poster_url") else "<div class='rec-poster' style='display:flex; align-items:center; justify-content:center; color:#3a3a7a; font-size:0.7rem;'>No Poster</div>"
+    return f"""
+    <div class='rec-card'>
+        {poster_html}
+        <div class='rec-content'>
+            <div style='display:flex; justify-content:space-between; align-items:flex-start;'>
+                <div>{rank_html} <span class='rec-title'>{info['title']}</span></div>
+                {score_html}
+            </div>
+            <div class='rec-meta'>📅 {info['year']}   {genres_html}</div>
+        </div>
+    </div>
+    """
 
 
 @torch.no_grad()
-def get_recommendations(model, edge_index, user_idx: int,
+def get_recommendations(model, edge_index, edge_weight, user_idx: int,
                         exclude_set: set, top_k: int = 10) -> list:
     model.eval()
-    user_embs, movie_embs = model(edge_index)
+    user_embs, movie_embs = model(edge_index, edge_weight)
     scores = (movie_embs @ user_embs[user_idx]).numpy()
     for m in exclude_set:
         scores[m] = -np.inf
@@ -216,12 +416,195 @@ def svd_recommendations(R_pred, user_idx: int,
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# CineBot helper functions
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Genre keyword map ─────────────────────────────────────────────────────────
+_GENRE_KEYWORDS: dict[str, list[str]] = {
+    "Crime":     ["crime", "noir", "gangster", "heist", "mafia", "detective", "murder"],
+    "Thriller":  ["thriller", "suspense", "tense", "tension", "gripping", "chase"],
+    "Horror":    ["horror", "scary", "spooky", "ghost", "zombie", "fear", "terrify"],
+    "Sci-Fi":    ["sci-fi", "scifi", "space", "future", "alien", "robot", "dystopia", "cyberpunk"],
+    "Comedy":    ["comedy", "funny", "laugh", "humor", "hilarious", "fun", "witty"],
+    "Romance":   ["romance", "love", "romantic", "relationship", "dating", "heartwarming"],
+    "Action":    ["action", "fight", "explosive", "battle", "war", "intense", "adrenaline"],
+    "Adventure": ["adventure", "quest", "journey", "explore", "epic", "expedition"],
+    "Animation": ["animation", "animated", "cartoon", "pixar", "disney", "anime"],
+    "Drama":     ["drama", "emotional", "moving", "powerful", "touching", "Oscar"],
+    "Fantasy":   ["fantasy", "magic", "wizard", "mythical", "dragon", "supernatural"],
+    "Mystery":   ["mystery", "whodunit", "puzzle", "clue", "investigation"],
+    "Documentary":["documentary", "real", "true story", "based on"],
+    "Children":  ["children", "kids", "family", "child"],
+}
+
+def detect_genres(text: str) -> list[str]:
+    """Return list of genre names mentioned in free text."""
+    text_lower = text.lower()
+    found = []
+    for genre, keywords in _GENRE_KEYWORDS.items():
+        for kw in keywords:
+            if kw in text_lower:
+                found.append(genre)
+                break
+    return found
+
+
+# ── Mood quiz questions ────────────────────────────────────────────────────────
+QUIZ_QUESTIONS = [
+    {
+        "q": "How's your energy right now?",
+        "opts": ["Hyped 🔥", "Relaxed 😌", "Melancholy 😔", "Curious 🧐"],
+    },
+    {
+        "q": "Pick a vibe for your watch session:",
+        "opts": ["Edge-of-seat 😱", "Feel-good 😊", "Deep & meaningful 💭", "Mind-bending 🌀"],
+    },
+    {
+        "q": "Preferred pacing?",
+        "opts": ["Fast-paced ⚡", "Slow burn 🕯️"],
+    },
+    {
+        "q": "Who are you watching with?",
+        "opts": ["Solo 🎧", "Group / friends 🍿"],
+    },
+    {
+        "q": "What kind of ending do you prefer?",
+        "opts": ["Happy 😄", "Bittersweet 😢", "Ambiguous / open-ended 🤔"],
+    },
+]
+
+_MOOD_MAP: list[tuple[tuple, list[str]]] = [
+    # (answer_fingerprint_substrings, genres)
+    # energy=Hyped + vibe=Edge-of-seat  → Action/Thriller/Crime
+    (("hyped", "edge-of-seat"), ["Action", "Thriller", "Crime"]),
+    # energy=Hyped + vibe=Feel-good  → Comedy/Adventure/Animation
+    (("hyped", "feel-good"),    ["Comedy", "Adventure", "Animation"]),
+    # energy=Relaxed + vibe=Feel-good  → Comedy/Romance/Animation
+    (("relaxed", "feel-good"),  ["Comedy", "Romance", "Animation"]),
+    # energy=Relaxed + vibe=Deep  → Drama/Romance
+    (("relaxed", "deep"),       ["Drama", "Romance"]),
+    # energy=Melancholy  → Drama/Romance
+    (("melancholy",),           ["Drama", "Romance"]),
+    # energy=Curious + vibe=Mind-bending  → Sci-Fi/Mystery/Thriller
+    (("curious", "mind-bending"),("Sci-Fi", "Mystery", "Thriller")),
+    # Curious + Deep  → Documentary/Drama/Mystery
+    (("curious", "deep"),       ["Documentary", "Drama", "Mystery"]),
+    # Edge-of-seat + fast  → Thriller/Action/Crime
+    (("edge-of-seat", "fast"),  ["Thriller", "Action", "Crime"]),
+    # Slow burn  → Drama/Romance/Mystery
+    (("slow burn",),            ["Drama", "Romance", "Mystery"]),
+    # Group watch + feel-good  → Comedy/Adventure
+    (("group", "feel-good"),    ["Comedy", "Adventure", "Action"]),
+    # Happy ending
+    (("happy",),                ["Comedy", "Romance", "Adventure", "Animation"]),
+    # Bittersweet ending
+    (("bittersweet",),          ["Drama", "Romance", "Crime"]),
+    # Ambiguous
+    (("ambiguous",),            ["Mystery", "Sci-Fi", "Thriller"]),
+]
+
+def compute_mood_genres(answers: list[str]) -> list[str]:
+    """Score answers against mood map and return ranked genre list."""
+    from collections import Counter
+    combined = " ".join(a.lower() for a in answers)
+    counter: Counter = Counter()
+    for fingerprint, genres in _MOOD_MAP:
+        if all(fp in combined for fp in fingerprint):
+            for g in genres:
+                counter[g] += 1
+    if not counter:
+        # Fallback: derive from first answer (energy level)
+        energy = answers[0].lower() if answers else ""
+        if "hyped" in energy:
+            return ["Action", "Thriller"]
+        elif "relaxed" in energy:
+            return ["Comedy", "Romance"]
+        elif "melancholy" in energy:
+            return ["Drama"]
+        else:
+            return ["Sci-Fi", "Mystery"]
+    return [g for g, _ in counter.most_common(4)]
+
+
+def get_movies_by_genres(genres: list[str], data: dict, top_k: int = 10,
+                         tmdb_api_key: str = "") -> list[dict]:
+    """Return top_k popular movies matching any of the given genres."""
+    movies  = data["movies"].copy()
+    ratings = data["ratings"]
+    pop = ratings.groupby("movieId").size().reset_index(name="_cnt")
+    movies = movies.merge(pop, on="movieId", how="left").fillna({"_cnt": 0})
+
+    def matches(genre_list):
+        return any(g in genre_list for g in genres)
+
+    filtered = movies[movies["genres"].apply(matches)].copy()
+    if filtered.empty:
+        filtered = movies.copy()
+    filtered = filtered.sort_values("_cnt", ascending=False).head(top_k)
+
+    results = []
+    for _, row in filtered.iterrows():
+        mid  = int(row["movieId"])
+        midx = data["movie2idx"].get(mid)
+        if midx is not None:
+            info = get_movie_info(midx, data, tmdb_api_key)
+        else:
+            title = row["title"]
+            year  = row.get("year", "")
+            info  = {"title": title, "year": year,
+                     "genres": row["genres"], "poster_url": ""}
+        results.append(info)
+    return results
+
+
+def render_chat_movie_cards(movie_list: list[dict]) -> str:
+    """Render compact movie cards as HTML for inside a bot bubble."""
+    cards = []
+    for i, info in enumerate(movie_list, 1):
+        genres_html = "".join(
+            f"<span class='chat-genre-pill'>{g}</span>" for g in info.get("genres", [])[:3]
+        )
+        poster_html = (
+            f"<img class='chat-rec-poster' src='{info['poster_url']}' loading='lazy' />"
+            if info.get("poster_url")
+            else "<div class='chat-rec-poster' style='display:flex;align-items:center;justify-content:center;color:#3a3a6a;font-size:.6rem;'>🎬</div>"
+        )
+        cards.append(f"""
+        <div class='chat-rec-card'>
+            {poster_html}
+            <div class='chat-rec-rank'>{i}</div>
+            <div>
+                <div class='chat-rec-title'>{info['title']}</div>
+                <div class='chat-rec-meta'>📅 {info['year']}  {genres_html}</div>
+            </div>
+        </div>""")
+    return "".join(cards)
+
+
+def bot_bubble(content_html: str) -> str:
+    return f"""
+    <div class='chat-row-bot'>
+        <div class='avatar-bot'>🤖</div>
+        <div class='bubble-bot'>{content_html}</div>
+    </div>"""
+
+
+def user_bubble(text: str) -> str:
+    return f"""
+    <div class='chat-row-user'>
+        <div class='bubble-user'>{text}</div>
+        <div class='avatar-user'>👤</div>
+    </div>"""
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Sidebar
 # ═══════════════════════════════════════════════════════════════════════════════
 everything = load_everything()
 data       = everything["data"]
 model      = everything["model"]
 edge_index = everything["edge_index"]
+edge_weight= everything.get("edge_weight")
 trained    = everything["trained"]
 train_df   = everything["train_df"]
 val_df     = everything["val_df"]
@@ -237,8 +620,10 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.markdown("---")
+    tmdb_api_key = st.text_input("🔑 TMDB API Key", value=os.environ.get("TMDB_API_KEY", ""), type="password", help="Required for movie posters from TMDB")
     page = st.radio("📌 Navigate", [
         "🏠 Overview",
+        "💬 CineBot",
         "✨ Interactive Mode",
         "🎯 Recommendations",
         "📊 EDA & Graph Stats",
@@ -382,7 +767,7 @@ elif page == "🎯 Recommendations":
         st.info("No model weights found. Train the model first using the notebook.")
         recs = [(i, float(5 - i * 0.3)) for i in range(top_k_sel)]  # mock
     else:
-        recs = get_recommendations(model, edge_index, user_idx,
+        recs = get_recommendations(model, edge_index, edge_weight, user_idx,
                                    exclude, top_k=top_k_sel)
 
     if show_svd:
@@ -397,16 +782,8 @@ elif page == "🎯 Recommendations":
                     unsafe_allow_html=True)
         st.markdown("<div class='scroll-box'>", unsafe_allow_html=True)
         for rank, (midx, score) in enumerate(recs, 1):
-            info = get_movie_info(midx, data)
-            genres_html = "".join(
-                f"<span class='genre-pill'>{g}</span>" for g in info["genres"])
-            st.markdown(f"""
-            <div class='rec-card'>
-                <span class='rec-rank'>#{rank}</span>
-                <span class='rec-score'>{score:.3f}</span>
-                <div class='rec-title'>{info['title']}</div>
-                <div class='rec-meta'>📅 {info['year']}   {genres_html}</div>
-            </div>""", unsafe_allow_html=True)
+            info = get_movie_info(midx, data, tmdb_api_key)
+            st.markdown(render_movie_card(info, rank=rank, score=f"{score:.3f}"), unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     if show_svd and colB:
@@ -415,17 +792,38 @@ elif page == "🎯 Recommendations":
                         unsafe_allow_html=True)
             st.markdown("<div class='scroll-box'>", unsafe_allow_html=True)
             for rank, (midx, score) in enumerate(svd_recs, 1):
-                info = get_movie_info(midx, data)
-                genres_html = "".join(
-                    f"<span class='genre-pill'>{g}</span>" for g in info["genres"])
-                st.markdown(f"""
-                <div class='rec-card'>
-                    <span class='rec-rank'>#{rank}</span>
-                    <span class='rec-score'>{score:.2f}</span>
-                    <div class='rec-title'>{info['title']}</div>
-                    <div class='rec-meta'>📅 {info['year']}   {genres_html}</div>
-                </div>""", unsafe_allow_html=True)
+                info = get_movie_info(midx, data, tmdb_api_key)
+                st.markdown(render_movie_card(info, rank=rank, score=f"{score:.2f}"), unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
+
+    if trained:
+        st.markdown("---")
+        st.markdown("<div class='section-title'>🔍 Explain a Recommendation</div>", unsafe_allow_html=True)
+        st.write("Understand why the GNN specifically chose a movie by tracing back your highly-weighted interactions and community co-watching patterns.")
+        
+        rec_options = {get_movie_info(m, data, tmdb_api_key)["title"]: m for m, _ in recs}
+        explain_sel = st.selectbox("Select a recommended movie to explain:", list(rec_options.keys()))
+        
+        if st.button("Generate GNN Explanation"):
+            target_midx = rec_options[explain_sel]
+            with st.spinner("Extracting critical paths using PyG GNNExplainer..."):
+                from src.explain import explain_recommendation, generate_explanation_html
+                import streamlit.components.v1 as components
+                
+                try:
+                    top_edges = explain_recommendation(
+                        model=model, 
+                        edge_index=edge_index, 
+                        n_users=data["n_users"], 
+                        user_idx=user_idx, 
+                        movie_idx=target_midx, 
+                        top_k_edges=20
+                    )
+                    html_graph = generate_explanation_html(top_edges, data, user_idx, target_midx)
+                    st.success(f"Retrieved Top {len(top_edges)} most influential paths for this recommendation.")
+                    components.html(html_graph, height=450)
+                except Exception as e:
+                    st.error(f"Error generating explanation: {e}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -659,7 +1057,7 @@ elif page == "✨ Interactive Mode":
                 else:
                     model.eval()
                     with torch.no_grad():
-                        user_embs, movie_embs = model(edge_index)
+                        user_embs, movie_embs = model(edge_index, edge_weight)
                         
                         # Compute user embedding via weighted sum based on ratings
                         new_emb = torch.zeros(movie_embs.shape[1])
@@ -690,16 +1088,9 @@ elif page == "✨ Interactive Mode":
                             st.markdown("<div class='section-title'>🧠 Your Neural Recommendations</div>", unsafe_allow_html=True)
                             st.markdown("<div class='scroll-box'>", unsafe_allow_html=True)
                             for rank, midx in enumerate(top_indices, 1):
-                                info = get_movie_info(int(midx), data)
+                                info = get_movie_info(int(midx), data, tmdb_api_key)
                                 score = float(scores[midx])
-                                genres_html = "".join(f"<span class='genre-pill'>{g}</span>" for g in info["genres"])
-                                st.markdown(f"""
-                                <div class='rec-card'>
-                                    <span class='rec-rank'>#{rank}</span>
-                                    <span class='rec-score'>{score:.3f} align</span>
-                                    <div class='rec-title'>{info['title']}</div>
-                                    <div class='rec-meta'>📅 {info['year']}   {genres_html}</div>
-                                </div>""", unsafe_allow_html=True)
+                                st.markdown(render_movie_card(info, rank=rank, score=f"{score:.3f} align"), unsafe_allow_html=True)
                             st.markdown("</div>", unsafe_allow_html=True)
 
     # ── QUIZ TAB ──
@@ -735,12 +1126,217 @@ elif page == "✨ Interactive Mode":
                 
                 st.markdown("<div class='scroll-box'>", unsafe_allow_html=True)
                 for _, row in filtered.iterrows():
-                    genres_html = "".join(f"<span class='genre-pill'>{g}</span>" for g in row["genres"])
-                    st.markdown(f"""
-                    <div class='rec-card'>
-                        <div class='rec-title'>{row['title']}</div>
-                        <div class='rec-meta'>📅 {int(row['year'])} ⭐ {int(row['count'])} total community ratings</div>
-                        <div style='margin-top:4px;'>{genres_html}</div>
-                    </div>""", unsafe_allow_html=True)
+                    mid = int(row['movieId'])
+                    midx = data["movie2idx"].get(mid)
+                    if midx is not None:
+                        info = get_movie_info(midx, data, tmdb_api_key)
+                        st.markdown(render_movie_card(info, score=f"⭐ {int(row['count'])} ratings"), unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"**{row['title']}** (No ratings)")
                 st.markdown("</div>", unsafe_allow_html=True)
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+elif page == "💬 CineBot":
+    st.markdown("""
+    <h2 style='color:#a8a0ff; margin-bottom:4px;'>💬 CineBot</h2>
+    <div style='color:#6060a0; font-size:.9rem; margin-bottom:20px;'>
+        Your AI movie companion — ask for genre picks or let the bot read your mood!
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── initialise session state ───────────────────────────────────────────────
+    if "cinebot_history" not in st.session_state:
+        st.session_state.cinebot_history   = []   # list of (role, html_content)
+        st.session_state.cinebot_mode      = None  # None | 'quiz'
+        st.session_state.quiz_step         = 0
+        st.session_state.quiz_answers      = []
+        st.session_state.awaiting_quiz_btn = False
+
+    # ── greeting on first load ─────────────────────────────────────────────────
+    if not st.session_state.cinebot_history:
+        greeting = (
+            "<b>Hey there! 🎬 I'm CineBot.</b><br>"
+            "I can help you in two ways:<br>"
+            "&nbsp;• <b>Genre requests</b> — just tell me what you feel like, e.g. "
+            "<i>'suggest me crime and thriller movies'</i><br>"
+            "&nbsp;• <b>Mood quiz</b> — type <i>'mood'</i> or <i>'quiz'</i> and I'll ask "
+            "you 5 quick questions to figure out exactly what suits your vibe right now.<br><br>"
+            "What would you like? 🍿"
+        )
+        st.session_state.cinebot_history.append(("bot", greeting))
+
+    # ── render existing chat history ────────────────────────────────────────────
+    history_html = "".join(
+        bot_bubble(c) if r == "bot" else user_bubble(c)
+        for r, c in st.session_state.cinebot_history
+    )
+    st.markdown(f"<div class='chat-outer'>{history_html}</div>",
+                unsafe_allow_html=True)
+
+    # ── Quiz: show option buttons if awaiting answer ───────────────────────────
+    if st.session_state.cinebot_mode == "quiz" and st.session_state.awaiting_quiz_btn:
+        step = st.session_state.quiz_step
+        if step < len(QUIZ_QUESTIONS):
+            opts = QUIZ_QUESTIONS[step]["opts"]
+            cols = st.columns(len(opts))
+            for col, opt in zip(cols, opts):
+                if col.button(opt, key=f"quiz_opt_{step}_{opt}"):
+                    # record user answer
+                    st.session_state.cinebot_history.append(("user", opt))
+                    st.session_state.quiz_answers.append(opt)
+                    st.session_state.awaiting_quiz_btn = False
+                    st.session_state.quiz_step += 1
+
+                    next_step = st.session_state.quiz_step
+                    if next_step < len(QUIZ_QUESTIONS):
+                        # ask next question
+                        nq = QUIZ_QUESTIONS[next_step]["q"]
+                        st.session_state.cinebot_history.append(
+                            ("bot", f"<b>Q{next_step+1}/{len(QUIZ_QUESTIONS)}:</b> {nq}"))
+                        st.session_state.awaiting_quiz_btn = True
+                    else:
+                        # quiz complete — compute mood and recommend
+                        mood_genres = compute_mood_genres(st.session_state.quiz_answers)
+                        mood_str = ", ".join(mood_genres)
+                        movies   = get_movies_by_genres(
+                            mood_genres, data, top_k=10,
+                            tmdb_api_key=tmdb_api_key
+                        )
+                        cards_html = render_chat_movie_cards(movies)
+                        response = (
+                            f"🧠 Based on your answers, your mood suggests: "
+                            f"<b>{mood_str}</b>.<br>"
+                            f"Here are your personalised picks:<br>{cards_html}"
+                        )
+                        st.session_state.cinebot_history.append(("bot", response))
+                        st.session_state.cinebot_mode      = None
+                        st.session_state.quiz_step         = 0
+                        st.session_state.quiz_answers      = []
+                        st.session_state.awaiting_quiz_btn = False
+                    st.rerun()
+
+    # ── Free-text input (not shown during quiz button phase) ───────────────────
+    elif st.session_state.cinebot_mode != "quiz" or not st.session_state.awaiting_quiz_btn:
+        _col1, _col2 = st.columns([8, 1])
+        with _col1:
+            user_input = st.text_input(
+                "",
+                placeholder="Type here… e.g. 'suggest crime movies' or 'quiz'",
+                key="cinebot_input",
+                label_visibility="collapsed",
+            )
+        with _col2:
+            send_clicked = st.button("Send 🚀", use_container_width=True)
+
+        if send_clicked and user_input.strip():
+            raw = user_input.strip()
+            st.session_state.cinebot_history.append(("user", raw))
+
+            text_lower = raw.lower()
+
+            # ── Branch: start mood quiz ────────────────────────────────────────
+            if any(kw in text_lower for kw in ["mood", "quiz", "vibe", "how i feel", "feeling"]):
+                st.session_state.cinebot_mode      = "quiz"
+                st.session_state.quiz_step         = 0
+                st.session_state.quiz_answers      = []
+                st.session_state.awaiting_quiz_btn = True
+                intro = (
+                    "🎯 <b>Mood Quiz!</b> I'll ask you 5 quick questions and recommend "
+                    "movies perfectly matched to your vibe.<br><br>"
+                    f"<b>Q1/{len(QUIZ_QUESTIONS)}:</b> {QUIZ_QUESTIONS[0]['q']}"
+                )
+                st.session_state.cinebot_history.append(("bot", intro))
+
+            # ── Branch: genre / type request ──────────────────────────────────
+            else:
+                genres = detect_genres(raw)
+
+                if genres:
+                    genre_tags = "".join(
+                        f"<span class='chat-genre-pill'>{g}</span>" for g in genres
+                    )
+                    movies = get_movies_by_genres(
+                        genres, data, top_k=10, tmdb_api_key=tmdb_api_key
+                    )
+                    cards_html = render_chat_movie_cards(movies)
+                    response = (
+                        f"Great taste! 🎬 Here are the top picks for: {genre_tags}<br>"
+                        f"{cards_html}"
+                    )
+                else:
+                    # fallback: greet or unknown
+                    greet_words = ["hi", "hello", "hey", "sup", "yo"]
+                    help_words  = ["help", "what can", "options", "what do"]
+                    if any(w in text_lower for w in greet_words):
+                        response = (
+                            "Hey! 👋 How can I help?<br>"
+                            "• Tell me a genre: <i>crime, thriller, sci-fi, horror…</i><br>"
+                            "• Or type <b>mood</b> for my 5-question quiz!"
+                        )
+                    elif any(w in text_lower for w in help_words):
+                        response = (
+                            "Here's what I can do:<br>"
+                            "&nbsp;🎬 <b>Genre request</b> — mention any genres and I'll fetch top titles.<br>"
+                            "&nbsp;🧠 <b>Mood quiz</b> — type <i>quiz</i> and I'll ask 5 Qs to predict your mood."
+                        )
+                    else:
+                        response = (
+                            "Hmm, I didn't catch a specific genre. 🤔<br>"
+                            "Try: <i>'suggest thriller movies'</i>, <i>'horror films'</i>, or type <b>quiz</b> "
+                            "to let me detect your mood!"
+                        )
+                st.session_state.cinebot_history.append(("bot", response))
+
+            st.rerun()
+
+    # ── Quick-action buttons ───────────────────────────────────────────────────
+    st.markdown("<div style='margin-top:8px; color:#5050a0; font-size:.8rem;'>Quick actions:</div>",
+                unsafe_allow_html=True)
+    qcols = st.columns(6)
+    quick_actions = [
+        ("🔪 Crime",     "suggest me crime movies"),
+        ("😱 Thriller",  "suggest me thriller movies"),
+        ("👻 Horror",    "suggest me horror movies"),
+        ("🚀 Sci-Fi",    "suggest me sci-fi movies"),
+        ("😂 Comedy",    "suggest me comedy movies"),
+        ("🧠 Mood Quiz", "mood"),
+    ]
+    for col, (label, action_text) in zip(qcols, quick_actions):
+        if col.button(label, key=f"quick_{label}", use_container_width=True):
+            # Inject as a user message
+            st.session_state.cinebot_history.append(("user", action_text))
+
+            if "mood" in action_text:
+                st.session_state.cinebot_mode      = "quiz"
+                st.session_state.quiz_step         = 0
+                st.session_state.quiz_answers      = []
+                st.session_state.awaiting_quiz_btn = True
+                intro = (
+                    "🎯 <b>Mood Quiz started!</b> Answer 5 quick questions and I'll "
+                    "find your perfect movie.<br><br>"
+                    f"<b>Q1/{len(QUIZ_QUESTIONS)}:</b> {QUIZ_QUESTIONS[0]['q']}"
+                )
+                st.session_state.cinebot_history.append(("bot", intro))
+            else:
+                genres = detect_genres(action_text)
+                movies = get_movies_by_genres(genres, data, top_k=10,
+                                              tmdb_api_key=tmdb_api_key)
+                cards_html = render_chat_movie_cards(movies)
+                genre_tags = "".join(
+                    f"<span class='chat-genre-pill'>{g}</span>" for g in genres
+                )
+                response = (
+                    f"Here are the top picks for: {genre_tags}<br>{cards_html}"
+                )
+                st.session_state.cinebot_history.append(("bot", response))
+            st.rerun()
+
+    # ── Reset chat ─────────────────────────────────────────────────────────────
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("🗑️ Clear Chat", key="cinebot_clear"):
+        for key in ["cinebot_history", "cinebot_mode", "quiz_step",
+                    "quiz_answers", "awaiting_quiz_btn"]:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.rerun()

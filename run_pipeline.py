@@ -128,18 +128,17 @@ t3 = time.time()
 
 n_users  = data["n_users"]
 n_movies = data["n_movies"]
+n_genres = len(data.get("genre_list", []))
+n_tags   = data.get("n_tags", 0)
 
-# Build bipartite edge index for LightGCN
-# (users: 0..n_users-1, movies: n_users..n_users+n_movies-1)
-ei          = pyg["user", "rated", "movie"].edge_index   # [2, E]
-user_src    = ei[0]
-movie_dst   = ei[1] + n_users
-edge_index  = torch.stack([
-    torch.cat([user_src, movie_dst]),
-    torch.cat([movie_dst, user_src]),
-])  # bidirectional  [2, 2E]
+# Convert fully semantic HeteroData into a single homogeneous structure
+# ensuring message passing automatically propagates through semantic Tag + Genre nodes
+homo = pyg.to_homogeneous()
+edge_index  = homo.edge_index
+edge_weight = homo.edge_attr.squeeze(-1) if hasattr(homo, "edge_attr") and homo.edge_attr is not None else None
 
 model = LightGCN(n_users=n_users, n_movies=n_movies,
+                 n_genres=n_genres, n_tags=n_tags,
                  emb_dim=args.emb_dim, n_layers=args.layers,
                  dropout=0.1)
 
@@ -167,6 +166,7 @@ trainer = Trainer(
     lr=args.lr,
     batch_size=args.batch,
     l2_lambda=1e-4,
+    edge_weight=edge_weight
 )
 
 WEIGHTS_PATH = os.path.join(BASE, "model_weights.pth")
@@ -193,7 +193,7 @@ t4 = time.time()
 model.load_state_dict(torch.load(WEIGHTS_PATH, map_location="cpu"))
 
 gnn_metrics = full_evaluation(model, edge_index, test_df, train_df,
-                               device=DEVICE, K=10, max_users=500)
+                               device=DEVICE, K=10, max_users=500, edge_weight=edge_weight)
 print("\n  ── GNN (LightGCN) Test Metrics ──")
 for k, v in gnn_metrics.items():
     print(f"    {k:25s}: {v:.4f}" if isinstance(v, float) else f"    {k:25s}: {v}")

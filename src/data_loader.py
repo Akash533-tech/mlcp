@@ -85,20 +85,29 @@ def preprocess(raw: dict, cold_start_threshold: int = 5) -> dict:
     ratings["user_idx"]  = ratings["userId"].map(user2idx)
     ratings["movie_idx"] = ratings["movieId"].map(movie2idx)
 
-    # ── Genre master list ─────────────────────────────────────────────────────
+    # ── Genre & Tag master lists ──────────────────────────────────────────────
     genre_list = sorted({g for genres in movies["genres"] for g in genres})
+    
+    from src.nlp_utils import TagProcessor
+    tp = TagProcessor()
+    clean_tags_df = tp.clean_tags(tags)
+    tag_weights = tp.compute_tag_weights(clean_tags_df)
+    tag_list = sorted(tag_weights["tag"].unique())
 
     return dict(
         ratings=ratings,
         movies=movies,
         tags=tags,
+        tag_weights=tag_weights,
         links=links,
         user2idx=user2idx,
         movie2idx=movie2idx,
         genre_list=genre_list,
+        tag_list=tag_list,
         cold_start_users=cold_start_users,
         n_users=len(unique_users),
         n_movies=len(unique_movies),
+        n_tags=len(tag_list)
     )
 
 

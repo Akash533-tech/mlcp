@@ -45,7 +45,8 @@ def full_evaluation(model,
                     train_df:     pd.DataFrame,
                     device:       str = "cpu",
                     K:            int = 10,
-                    max_users:    int = 500) -> dict:
+                    max_users:    int = 500,
+                    edge_weight:  torch.Tensor = None) -> dict:
     """
     Compute Precision@K, Recall@K, NDCG@K, RMSE, MAE on the test split.
     Also computes Coverage and Diversity.
@@ -72,8 +73,11 @@ def full_evaluation(model,
     all_rmse, all_mae           = [], []
     all_recommended             = []
 
+    if edge_weight is not None:
+        edge_weight = edge_weight.to(device)
+
     with torch.no_grad():
-        user_embs, movie_embs = model(edge_index)
+        user_embs, movie_embs = model(edge_index, edge_weight)
 
     for u in eval_users:
         gt = test_user_items[u]
