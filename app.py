@@ -1372,11 +1372,26 @@ elif page == "🎯  Interactive Mode":
                         st.warning("Please rate or match at least one valid movie.")
                     else:
                         new_emb /= len(rated_midxs)
-                        scores = (movie_embs @ new_emb).numpy()
                         
-                        # Apply some mock psychographic tuning logic: just shifting scores
-                        if f_v_d > 50:
-                            scores *= 1.05 # Prefer higher scores (familiarity)
+                        # 1. Cosine Similarity to fix Popularity Bias
+                        movie_norms = torch.norm(movie_embs, p=2, dim=1) + 1e-8
+                        new_emb_norm = torch.norm(new_emb, p=2) + 1e-8
+                        scores = (movie_embs @ new_emb / (movie_norms * new_emb_norm)).numpy()
+                        
+                        # 2. Apply Psychographic Tuning (Familiarity vs Discovery)
+                        pop_counts = data["ratings"]["movieId"].value_counts()
+                        pop_array = np.zeros(movie_embs.shape[0])
+                        for mid, count in pop_counts.items():
+                            if mid in data["movie2idx"]:
+                                pop_array[data["movie2idx"][mid]] = count
+                        
+                        max_pop = pop_array.max() if pop_array.max() > 0 else 1.0
+                        norm_pop = pop_array / max_pop  # range [0, 1]
+                        
+                        # Map slider (0-100) to a weight between -0.3 (Discovery) and +0.3 (Familiarity)
+                        # Cosine similarity is [-1, 1], so shifting by 0.3 strongly biases the ranking.
+                        tuning_weight = ((f_v_d - 50) / 50.0) * 0.3
+                        scores += (norm_pop * tuning_weight)
                         
                         for m in rated_midxs:
                             scores[m] = -np.inf
